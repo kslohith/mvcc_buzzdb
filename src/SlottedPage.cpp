@@ -9,7 +9,7 @@ SlottedPage::SlottedPage() : page_data(std::make_unique<char[]>(PAGE_SIZE)), met
     }
 }
 
-bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple, int pageId, TupleManager& tupleManager) {
+bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple) {
     auto serializedTuple = tuple->serialize();
     size_t tuple_size = serializedTuple.size();
 
@@ -53,9 +53,6 @@ bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple, int pageId, TupleManage
     }
 
     std::memcpy(page_data.get() + offset, serializedTuple.c_str(), tuple_size);
-    
-    tupleManager.addTuple(tuple->version_id, pageId, offset, tuple_size, tuple->begin_ts);
-
     return true;
 }
 
@@ -73,7 +70,7 @@ void SlottedPage::deleteTuple(size_t index) {
 
 void SlottedPage::updateTuple(size_t index, std::unique_ptr<Tuple> tuple) {
     deleteTuple(index);
-    addTuple(std::move(tuple), index);
+    addTuple(std::move(tuple));
 }
 
 void SlottedPage::print() const {

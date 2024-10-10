@@ -6,12 +6,13 @@
 #include <iostream>
 #include <limits>
 #include "SlottedPage.h"
-#include "TupleManager.h"
 
 const std::string DATABASE_FILENAME = "buzzdb.dat";
 using PageID = uint16_t;
 //static constexpr size_t PAGE_SIZE = 4096;
 
+class SlottedPage;
+class TupleManager;
 class StorageManager {
 public:
     std::fstream fileStream;
@@ -20,7 +21,7 @@ public:
     StorageManager();
     ~StorageManager();
 
-    std::unique_ptr<SlottedPage> load(PageID page_id, TupleManager& tupleManager);
+    std::unique_ptr<SlottedPage> load(PageID page_id);
     void flush(PageID page_id, const std::unique_ptr<SlottedPage>& page);
     void extend();
 };

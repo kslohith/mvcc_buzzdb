@@ -35,8 +35,8 @@ public:
 
     std::unique_ptr<Field> clone() const;
     void print() const;
-
-    bool operator==(const Field& other) const;
 };
+
+bool operator==(const Field& lhs, const Field& rhs);
 
 #endif // FIELD_H

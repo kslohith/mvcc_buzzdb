@@ -9,12 +9,10 @@ int main() {
 
     // Start the transaction
     auto start = std::chrono::high_resolution_clock::now();
-    auto millies = start.time_since_epoch();
-    auto txnStartTime = std::chrono::duration_cast<std::chrono::milliseconds>(millies).count();
 
     // Example operations
-    db.insert(6, 93, txnStartTime);
-    db.printTuples(txnStartTime);
+    db.insert(6, 93);
+    db.printTuples();
     db.executeQueries();
 
     // Calculate and print the elapsed time

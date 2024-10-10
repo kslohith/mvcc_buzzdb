@@ -3,7 +3,7 @@
 BufferManager::BufferManager()
     : policy(std::make_unique<LruPolicy>(MAX_PAGES_IN_MEMORY)) {}
 
-std::unique_ptr<SlottedPage>& BufferManager::getPage(int page_id, TupleManager& tupleManager) {
+std::unique_ptr<SlottedPage>& BufferManager::getPage(int page_id) {
     auto it = pageMap.find(page_id);
     if (it != pageMap.end()) {
         policy->touch(page_id);
@@ -19,7 +19,7 @@ std::unique_ptr<SlottedPage>& BufferManager::getPage(int page_id, TupleManager& 
         }
     }
 
-    auto page = storage_manager.load(page_id, tupleManager);
+    auto page = storage_manager.load(page_id);
     policy->touch(page_id);
     std::cout << "Loading page: " << page_id << "\n";
     pageMap[page_id] = std::move(page);

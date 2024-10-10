@@ -6,7 +6,6 @@
 #include <sstream>
 #include <cstring>
 #include "Tuple.h"
-#include "TupleManager.h"
 #include "Policy.h"
 
 static constexpr size_t PAGE_SIZE = 4096;  // Fixed page size
@@ -26,7 +25,7 @@ public:
 
     SlottedPage();
 
-    bool addTuple(std::unique_ptr<Tuple> tuple, int pageId, TupleManager& tupleManager);
+    bool addTuple(std::unique_ptr<Tuple> tuple);
     void deleteTuple(size_t index);
     void updateTuple(size_t index, std::unique_ptr<Tuple> tuple);
     void print() const;

@@ -5,7 +5,6 @@
 #include <vector>
 #include <memory>
 #include "BufferManager.h"
-#include "TupleManager.h"
 #include "Field.h"
 #include "Tuple.h"
 #include "Predicate.h" // Assuming predicates are defined here
@@ -41,14 +40,13 @@ public:
 class ScanOperator : public Operator {
 private:
     BufferManager& bufferManager;
-    TupleManager& tupleManager;
     size_t currentPageIndex = 0;
     size_t currentSlotIndex = 0;
     std::unique_ptr<Tuple> currentTuple;
     size_t tuple_count = 0;
 
 public:
-    ScanOperator(BufferManager& manager, TupleManager& tupleManager);
+    ScanOperator(BufferManager& manager);
     void open() override;
     bool next() override;
     void close() override;
@@ -105,11 +103,10 @@ private:
 class InsertOperator : public Operator {
 private:
     BufferManager& bufferManager;
-    TupleManager& tupleManager;
     std::unique_ptr<Tuple> tupleToInsert;
 
 public:
-    InsertOperator(BufferManager& manager, TupleManager& tupleManager);
+    InsertOperator(BufferManager& manager);
 
     void setTupleToInsert(std::unique_ptr<Tuple> tuple);
     void open() override;
@@ -121,35 +118,16 @@ public:
 class DeleteOperator : public Operator {
 private:
     BufferManager& bufferManager;
-    TupleManager& tupleManager;
     size_t pageId;
     size_t tupleId;
 
 public:
-    DeleteOperator(BufferManager& manager, size_t pageId, size_t tupleId, TupleManager& tupleManager);
+    DeleteOperator(BufferManager& manager, size_t pageId, size_t tupleId);
 
     void open() override;
     bool next() override;
     void close() override;
     std::vector<std::unique_ptr<Field>> getOutput() override;
 };
-
-class UpdateOperator : public Operator {
-private:
-    BufferManager& bufferManager;
-    TupleManager& tupleManager;
-    std::unique_ptr<Tuple> tupleToUpdate;
-    std::unique_ptr<Tuple> currentTuple;
-
-public:
-    UpdateOperator(BufferManager& manager, TupleManager& tupleManager);
-
-    void setTupleToUpdate(std::unique_ptr<Tuple> tuple);
-    void open() override;
-    bool next() override;
-    void close() override;
-    std::vector<std::unique_ptr<Field>> getOutput() override;
-};
-
 
 #endif // OPERATORS_H

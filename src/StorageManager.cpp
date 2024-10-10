@@ -25,9 +25,9 @@ StorageManager::~StorageManager() {
     }
 }
 
-std::unique_ptr<SlottedPage> StorageManager::load(PageID page_id, TupleManager& tupleManager) {
+std::unique_ptr<SlottedPage> StorageManager::load(PageID page_id) {
     fileStream.seekg(page_id * PAGE_SIZE, std::ios::beg);
-    auto page = std::make_unique<SlottedPage>(tupleManager);
+    auto page = std::make_unique<SlottedPage>();
     
     // Read the content of the file into the page
     if(fileStream.read(page->page_data.get(), PAGE_SIZE)){

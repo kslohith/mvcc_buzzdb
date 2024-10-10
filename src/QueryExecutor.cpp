@@ -22,7 +22,7 @@ void QueryExecutor::prettyPrint(const QueryComponents& components) {
     std::cout << std::endl;
 }
 
-void QueryExecutor::executeQuery(const QueryComponents& components, BufferManager& buffer_manager) {
+void QueryExecutor::executeQuery(const QueryComponents& components, BufferManager& buffer_manager) { 
     // Stack allocation of ScanOperator
     ScanOperator scanOp(buffer_manager);
 

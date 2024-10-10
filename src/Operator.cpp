@@ -1,4 +1,4 @@
-#include "Operators.h"
+#include "Operator.h"
 
 // UnaryOperator implementation
 UnaryOperator::UnaryOperator(Operator& input) : input(&input) {}
@@ -8,8 +8,8 @@ BinaryOperator::BinaryOperator(Operator& input_left, Operator& input_right)
         : input_left(&input_left), input_right(&input_right) {}
 
 // ScanOperator implementation
-ScanOperator::ScanOperator(BufferManager& manager, TupleManager& tupleManager)
-        : bufferManager(manager), tupleManager(tupleManager) {}
+ScanOperator::ScanOperator(BufferManager& manager)
+        : bufferManager(manager) {}
 
 void ScanOperator::open() {
     currentPageIndex = 0;
@@ -40,7 +40,7 @@ std::vector<std::unique_ptr<Field>> ScanOperator::getOutput() {
 
 void ScanOperator::loadNextTuple() {
    while (currentPageIndex < bufferManager.getNumPages()) {
-        auto& currentPage = bufferManager.getPage(currentPageIndex, tupleManager);
+        auto& currentPage = bufferManager.getPage(currentPageIndex);
         if (!currentPage || currentSlotIndex >= MAX_SLOTS) {
             currentSlotIndex = 0; // Reset slot index when moving to a new page
             ++currentPageIndex;   // Increment page index after exhausting current page
@@ -264,8 +264,8 @@ Field HashAggregationOperator::updateAggregate(const AggrFunc& aggrFunc, const F
     throw std::runtime_error("Invalid operation or unsupported Field type.");
 }
 
-InsertOperator::InsertOperator(BufferManager& manager, TupleManager& tupleManager)
-    : bufferManager(manager), tupleManager(tupleManager) {}
+InsertOperator::InsertOperator(BufferManager& manager)
+    : bufferManager(manager) {}
 
 void InsertOperator::setTupleToInsert(std::unique_ptr<Tuple> tuple) {
     tupleToInsert = std::move(tuple);
@@ -279,9 +279,9 @@ bool InsertOperator::next() {
     if (!tupleToInsert) return false; // No tuple to insert
 
     for (size_t pageId = 0; pageId < bufferManager.getNumPages(); ++pageId) {
-        auto& page = bufferManager.getPage(pageId, tupleManager);
+        auto& page = bufferManager.getPage(pageId);
         // Attempt to insert the tuple
-        if (page->addTuple(tupleToInsert->clone(), pageId)) { 
+        if (page->addTuple(tupleToInsert->clone())) { 
             // Flush the page to disk after insertion
             bufferManager.flushPage(pageId); 
             return true; // Insertion successful
@@ -290,7 +290,7 @@ bool InsertOperator::next() {
 
     // If insertion failed in all existing pages, extend the database and try again
     bufferManager.extend();
-    auto& newPage = bufferManager.getPage(bufferManager.getNumPages() - 1, tupleManager);
+    auto& newPage = bufferManager.getPage(bufferManager.getNumPages() - 1);
     if (newPage->addTuple(tupleToInsert->clone())) {
         bufferManager.flushPage(bufferManager.getNumPages() - 1);
         return true; // Insertion successful after extending the database
@@ -307,15 +307,15 @@ std::vector<std::unique_ptr<Field>> InsertOperator::getOutput() {
     return {}; // Return empty vector
 }
 
-DeleteOperator::DeleteOperator(BufferManager& manager, size_t pageId, size_t tupleId, TupleManager& tupleManager)
-    : bufferManager(manager), pageId(pageId), tupleId(tupleId), tupleManager(tupleManager) {}
+DeleteOperator::DeleteOperator(BufferManager& manager, size_t pageId, size_t tupleId)
+    : bufferManager(manager), pageId(pageId), tupleId(tupleId) {}
 
 void DeleteOperator::open() {
     // Not used in this context
 }
 
 bool DeleteOperator::next() {
-    auto& page = bufferManager.getPage(pageId, tupleManager);
+    auto& page = bufferManager.getPage(pageId);
     if (!page) {
         std::cerr << "Page not found." << std::endl;
         return false;
@@ -331,65 +331,5 @@ void DeleteOperator::close() {
 }
 
 std::vector<std::unique_ptr<Field>> DeleteOperator::getOutput() {
-    return {}; // Return empty vector
-}
-
-UpdateOperator::UpdateOperator(BufferManager& manager, TupleManager& tupleManager)
-    : bufferManager(manager), tupleManager(tupleManager) {}
-
-void UpdateOperator::setTupleToUpdate(std::unique_ptr<Tuple> tuple) {
-    tupleToUpdate = std::move(tuple);
-}
-
-void UpdateOperator::open() {
-    // Not used in this context
-}
-
-bool UpdateOperator::next() {
-    if (!tupleToUpdate) return false; // No tuple to update
-
-    int currentPageIndex = 0;
-    int currentSlotIndex = 0;
-
-    while (currentPageIndex < bufferManager.getNumPages()) {
-        auto& currentPage = bufferManager.getPage(currentPageIndex, tupleManager);
-        if (!currentPage || currentSlotIndex >= MAX_SLOTS) {
-            currentSlotIndex = 0; // Reset slot index when moving to a new page
-        }
-
-        char* page_buffer = currentPage->page_data.get();
-        Slot* slot_array = reinterpret_cast<Slot*>(page_buffer);
-
-        while (currentSlotIndex < MAX_SLOTS) {
-            if (!slot_array[currentSlotIndex].empty) {
-                const char* tuple_data = page_buffer + slot_array[currentSlotIndex].offset;
-                std::istringstream iss(std::string(tuple_data, slot_array[currentSlotIndex].length));
-                currentTuple = Tuple::deserialize(iss);
-
-                if (currentTuple->fields[0]->asInt() == tupleToUpdate->fields[0]->asInt()) {
-                    // Update the tuple
-                    currentPage->deleteTuple(currentSlotIndex); // Delete the old tuple
-                    currentPage->addTuple(tupleToUpdate->clone()); // Insert the updated tuple
-                    bufferManager.flushPage(currentPageIndex); // Flush the page to disk after update
-                    return true; // Update successful
-                }
-                currentSlotIndex++; // Move to the next slot for the next call
-            }
-            currentSlotIndex++;
-        }
-
-        // Increment page index after exhausting current page
-        currentPageIndex++;
-    }
-
-    // Update failed
-    return false;
-}
-
-void UpdateOperator::close() {
-    // Not used in this context
-}
-
-std::vector<std::unique_ptr<Field>> UpdateOperator::getOutput() {
     return {}; // Return empty vector
 }

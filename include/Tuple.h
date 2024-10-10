@@ -12,13 +12,8 @@
 class Tuple {
 public:
     std::vector<std::unique_ptr<Field>> fields;
-    int version_id;
-    int begin_ts;
-    int end_ts;
-    int read_ts;
 
     Tuple();
-    Tuple(int versionId);
 
     void addField(std::unique_ptr<Field> field);
     size_t getSize() const;
