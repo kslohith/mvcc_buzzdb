@@ -1,15 +1,7 @@
 #include "SlottedPage.h"
 
-SlottedPage::SlottedPage() : page_data(std::make_unique<char[]>(PAGE_SIZE)), metadata_size(sizeof(Slot) * MAX_SLOTS) {
-    Slot* slot_array = reinterpret_cast<Slot*>(page_data.get());
-    for (size_t slot_itr = 0; slot_itr < MAX_SLOTS; slot_itr++) {
-        slot_array[slot_itr].empty = true;
-        slot_array[slot_itr].offset = INVALID_VALUE;
-        slot_array[slot_itr].length = INVALID_VALUE;
-    }
-}
-
-bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple) {
+bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple, int pageId, LockManager &lock_manager) {
+    tuple->pageNumber = pageId;
     auto serializedTuple = tuple->serialize();
     size_t tuple_size = serializedTuple.size();
 
@@ -52,7 +44,10 @@ bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple) {
         slot_array[slot_itr].length = tuple_size;
     }
 
-    std::memcpy(page_data.get() + offset, serializedTuple.c_str(), tuple_size);
+    lock_manager.getLock(pageId, slot_itr);
+    tuple->slotId = slot_itr;
+    auto serializedData = tuple->serialize();
+    std::memcpy(page_data.get() + offset, serializedData.c_str(), tuple_size);
     return true;
 }
 
@@ -68,9 +63,9 @@ void SlottedPage::deleteTuple(size_t index) {
     }
 }
 
-void SlottedPage::updateTuple(size_t index, std::unique_ptr<Tuple> tuple) {
+void SlottedPage::updateTuple(int pageId, size_t index, std::unique_ptr<Tuple> tuple, LockManager &lock_manager) {
     deleteTuple(index);
-    addTuple(std::move(tuple));
+    addTuple(std::move(tuple), pageId, lock_manager);
 }
 
 void SlottedPage::print() const {

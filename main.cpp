@@ -11,9 +11,10 @@ int main() {
     auto start = std::chrono::high_resolution_clock::now();
 
     // Example operations
-    db.insert(6, 93);
+    // db.insert(1, 10);
+    // db.insert(2, 20);
+    db.updateTuples(2, 30);
     db.printTuples();
-    db.executeQueries();
 
     // Calculate and print the elapsed time
     auto end = std::chrono::high_resolution_clock::now();

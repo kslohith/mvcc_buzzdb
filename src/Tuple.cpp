@@ -8,6 +8,8 @@ void Tuple::addField(std::unique_ptr<Field> field) {
 
 size_t Tuple::getSize() const {
     size_t size = 0;
+    size += sizeof(pageNumber);
+    size += sizeof(slotId);
     for (const auto& field : fields) {
         size += field->data_length;
     }
@@ -16,6 +18,8 @@ size_t Tuple::getSize() const {
 
 std::string Tuple::serialize() {
     std::stringstream buffer;
+    buffer << pageNumber << ' ';
+    buffer << slotId << ' ';
     buffer << fields.size() << ' ';
     for (const auto& field : fields) {
         buffer << field->serialize();
@@ -30,8 +34,11 @@ void Tuple::serialize(std::ofstream& out) {
 
 std::unique_ptr<Tuple> Tuple::deserialize(std::istream& in) {
     auto tuple = std::make_unique<Tuple>();
+    int pageNumber, slotId;
     size_t fieldCount;
-    in >> fieldCount;
+    in >> pageNumber >> slotId >> fieldCount;
+    tuple->pageNumber = pageNumber;
+    tuple->slotId = slotId;
     for (size_t i = 0; i < fieldCount; ++i) {
         tuple->addField(Field::deserialize(in));
     }

@@ -15,7 +15,7 @@ void BuzzDB::insert(int key, int value) {
     newTuple->addField(std::move(key_field));
     newTuple->addField(std::move(value_field));
 
-    InsertOperator insertOp(buffer_manager);
+    InsertOperator insertOp(buffer_manager, lock_manager);
     insertOp.setTupleToInsert(std::move(newTuple));
     bool status = insertOp.next();
     std::cout << "Is tuples inserted: " << status << "\n";
@@ -50,5 +50,26 @@ void BuzzDB::executeQueries() {
         auto components = parseQuery(query);
         QueryExecutor::prettyPrint(components);
         QueryExecutor::executeQuery(components, buffer_manager);
+    }
+}
+
+void BuzzDB::updateTuples(int key, int value) {
+    /* Search for the existing tuple with the given key and get its page and slot number, if it does not have any lock associated with it, then acquire lock and then call update method of the tuple */
+    ScanOperator scanOp(buffer_manager);
+    scanOp.open();
+    while(scanOp.next()) {
+        std::unique_ptr<Tuple> &currentTuple = scanOp.getCurrentTuple();
+        if( currentTuple->fields[0]->asInt() == key ) {
+            std::cout << "Tuple found" << currentTuple->pageNumber << currentTuple->slotId << "\n";
+            std::shared_ptr<Lock> currentLock = lock_manager.getLock(currentTuple->pageNumber, currentTuple->slotId);
+            currentLock->acquire();
+            /* update the value of the tuple with the passed value */
+            currentTuple->fields[1] = std::make_unique<Field>(value);
+            auto &page = buffer_manager.getPage(currentTuple->pageNumber);
+            page->updateTuple(currentTuple->pageNumber, currentTuple->slotId, std::move(currentTuple), lock_manager);
+            std::cout << "Tuple updated successfully" << "\n";
+            currentLock->release();
+            break;
+        }
     }
 }

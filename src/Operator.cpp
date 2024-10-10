@@ -55,6 +55,7 @@ void ScanOperator::loadNextTuple() {
                 const char* tuple_data = page_buffer + slot_array[currentSlotIndex].offset;
                 std::istringstream iss(std::string(tuple_data, slot_array[currentSlotIndex].length));
                 currentTuple = Tuple::deserialize(iss);
+                std::cout << "Loaded tuple from page " << currentTuple->pageNumber << " slot " << currentTuple->slotId << "\n";
                 ++currentSlotIndex; // Move to the next slot for the next call
                 ++tuple_count;      // Increment tuple count
                 return;             // Tuple loaded successfully
@@ -63,6 +64,10 @@ void ScanOperator::loadNextTuple() {
         }
    }
    currentTuple.reset(); // No more tuples are available
+}
+
+std::unique_ptr<Tuple>& ScanOperator::getCurrentTuple() {
+    return currentTuple;
 }
 
 // SelectOperator implementation
@@ -264,8 +269,8 @@ Field HashAggregationOperator::updateAggregate(const AggrFunc& aggrFunc, const F
     throw std::runtime_error("Invalid operation or unsupported Field type.");
 }
 
-InsertOperator::InsertOperator(BufferManager& manager)
-    : bufferManager(manager) {}
+InsertOperator::InsertOperator(BufferManager& manager, LockManager& lock_manager)
+    : bufferManager(manager), lockManager(lock_manager) {}
 
 void InsertOperator::setTupleToInsert(std::unique_ptr<Tuple> tuple) {
     tupleToInsert = std::move(tuple);
@@ -281,7 +286,7 @@ bool InsertOperator::next() {
     for (size_t pageId = 0; pageId < bufferManager.getNumPages(); ++pageId) {
         auto& page = bufferManager.getPage(pageId);
         // Attempt to insert the tuple
-        if (page->addTuple(tupleToInsert->clone())) { 
+        if (page->addTuple(tupleToInsert->clone(), pageId, lockManager)) { 
             // Flush the page to disk after insertion
             bufferManager.flushPage(pageId); 
             return true; // Insertion successful
@@ -291,7 +296,7 @@ bool InsertOperator::next() {
     // If insertion failed in all existing pages, extend the database and try again
     bufferManager.extend();
     auto& newPage = bufferManager.getPage(bufferManager.getNumPages() - 1);
-    if (newPage->addTuple(tupleToInsert->clone())) {
+    if (newPage->addTuple(tupleToInsert->clone(), bufferManager.getNumPages() - 1, lockManager)) {
         bufferManager.flushPage(bufferManager.getNumPages() - 1);
         return true; // Insertion successful after extending the database
     }

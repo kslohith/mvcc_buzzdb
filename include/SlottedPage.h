@@ -7,6 +7,7 @@
 #include <cstring>
 #include "Tuple.h"
 #include "Policy.h"
+#include "LockManager.h"
 
 static constexpr size_t PAGE_SIZE = 4096;  // Fixed page size
 static constexpr size_t MAX_SLOTS = 512;   // Fixed number of slots
@@ -20,14 +21,22 @@ struct Slot {
 
 class SlottedPage {
 public:
-    std::unique_ptr<char[]> page_data;
-    size_t metadata_size;
+    std::unique_ptr<char[]> page_data = std::make_unique<char[]>(PAGE_SIZE);
+    size_t metadata_size = sizeof(Slot) * MAX_SLOTS;
 
-    SlottedPage();
+    SlottedPage() {
+        // Empty page -> initialize slot array inside page
+        Slot* slot_array = reinterpret_cast<Slot*>(page_data.get());
+        for (size_t slot_itr = 0; slot_itr < MAX_SLOTS; slot_itr++) {
+            slot_array[slot_itr].empty = true;
+            slot_array[slot_itr].offset = INVALID_VALUE;
+            slot_array[slot_itr].length = INVALID_VALUE;
+        }
+    }; 
 
-    bool addTuple(std::unique_ptr<Tuple> tuple);
+    bool addTuple(std::unique_ptr<Tuple> tuple, int pageId, LockManager &lock_manager);
     void deleteTuple(size_t index);
-    void updateTuple(size_t index, std::unique_ptr<Tuple> tuple);
+    void updateTuple(int pageId, size_t index, std::unique_ptr<Tuple> tuple, LockManager &lock_manager);
     void print() const;
 };
 

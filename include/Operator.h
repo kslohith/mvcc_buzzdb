@@ -51,6 +51,7 @@ public:
     bool next() override;
     void close() override;
     std::vector<std::unique_ptr<Field>> getOutput() override;
+    std::unique_ptr<Tuple>& getCurrentTuple();
 
 private:
     void loadNextTuple();
@@ -103,10 +104,11 @@ private:
 class InsertOperator : public Operator {
 private:
     BufferManager& bufferManager;
+    LockManager& lockManager;
     std::unique_ptr<Tuple> tupleToInsert;
 
 public:
-    InsertOperator(BufferManager& manager);
+    InsertOperator(BufferManager& manager, LockManager& lockManager);
 
     void setTupleToInsert(std::unique_ptr<Tuple> tuple);
     void open() override;
