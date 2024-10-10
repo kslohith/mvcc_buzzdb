@@ -1,8 +1,9 @@
 #include "BuzzDB.h"
 #include "QueryExecutor.h"
 
-BuzzDB::BuzzDB() {
+BuzzDB::BuzzDB(): txn_manager(lock_manager) {
     // Storage Manager automatically created
+    //manually create the transaction manager by passing lock manager
 }
 
 void BuzzDB::insert(int key, int value) {
@@ -53,7 +54,7 @@ void BuzzDB::executeQueries() {
     }
 }
 
-void BuzzDB::updateTuples(int key, int value) {
+void BuzzDB::updateTuples(int key, int value, Transaction &txn) {
     /* Search for the existing tuple with the given key and get its page and slot number, if it does not have any lock associated with it, then acquire lock and then call update method of the tuple */
     ScanOperator scanOp(buffer_manager);
     scanOp.open();
@@ -63,12 +64,14 @@ void BuzzDB::updateTuples(int key, int value) {
             std::cout << "Tuple found" << currentTuple->pageNumber << currentTuple->slotId << "\n";
             std::shared_ptr<Lock> currentLock = lock_manager.getLock(currentTuple->pageNumber, currentTuple->slotId);
             currentLock->acquire();
+            txn.locks_held.push_back({currentTuple->pageNumber, currentTuple->slotId});
             /* update the value of the tuple with the passed value */
             currentTuple->fields[1] = std::make_unique<Field>(value);
             auto &page = buffer_manager.getPage(currentTuple->pageNumber);
             page->updateTuple(currentTuple->pageNumber, currentTuple->slotId, std::move(currentTuple), lock_manager);
             std::cout << "Tuple updated successfully" << "\n";
-            currentLock->release();
+            //Strict 2pl Locking protocol, locks will be released whenn the transaction commits
+            //currentLock->release();
             break;
         }
     }

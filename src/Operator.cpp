@@ -1,4 +1,5 @@
 #include "Operator.h"
+#include "Transaction.h"
 
 // UnaryOperator implementation
 UnaryOperator::UnaryOperator(Operator& input) : input(&input) {}

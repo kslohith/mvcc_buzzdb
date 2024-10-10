@@ -7,12 +7,14 @@
 #include "HashIndex.h"
 #include "BufferManager.h"
 #include "Operator.h"
+#include "TransactionManager.h"
 
 class BuzzDB {
 public:
     HashIndex hash_index;
     BufferManager buffer_manager;
     LockManager lock_manager;
+    TransactionManager txn_manager;
 
     size_t max_number_of_tuples = 5000;
     size_t tuple_insertion_attempt_counter = 0;
@@ -22,8 +24,9 @@ public:
     void insert(int key, int value);
     void printTuples();
     void deleteTuples(int index);
-    void updateTuples(int key, int value);
+    void updateTuples(int key, int value, Transaction &txn);
     void executeQueries();
+    
 };
 
 #endif // BUZZDB_H

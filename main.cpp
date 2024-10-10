@@ -13,8 +13,11 @@ int main() {
     // Example operations
     // db.insert(1, 10);
     // db.insert(2, 20);
-    db.updateTuples(2, 30);
+    auto txn1 = db.txn_manager.createTransaction();
+    db.insert(3, 30);
+    db.updateTuples(2, 30, *txn1);
     db.printTuples();
+    txn1->commit();
 
     // Calculate and print the elapsed time
     auto end = std::chrono::high_resolution_clock::now();
