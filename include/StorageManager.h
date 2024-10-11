@@ -17,6 +17,7 @@ class StorageManager {
 public:
     std::fstream fileStream;
     size_t num_pages = 0;
+    std::mutex file_mutex;
 
     StorageManager();
     ~StorageManager();

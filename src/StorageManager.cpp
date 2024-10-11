@@ -26,6 +26,7 @@ StorageManager::~StorageManager() {
 }
 
 std::unique_ptr<SlottedPage> StorageManager::load(PageID page_id) {
+    std::lock_guard<std::mutex> guard(file_mutex);
     fileStream.seekg(page_id * PAGE_SIZE, std::ios::beg);
     auto page = std::make_unique<SlottedPage>();
     
@@ -36,11 +37,11 @@ std::unique_ptr<SlottedPage> StorageManager::load(PageID page_id) {
         std::cerr << "Error: Unable to read data from the file. \n";
         exit(-1);
     }
-    
     return page;
 }
 
 void StorageManager::flush(PageID page_id, const std::unique_ptr<SlottedPage>& page) {
+    std::lock_guard<std::mutex> guard(file_mutex);
     size_t page_offset = page_id * PAGE_SIZE;        
 
     // Move the write pointer
@@ -50,6 +51,7 @@ void StorageManager::flush(PageID page_id, const std::unique_ptr<SlottedPage>& p
 }
 
 void StorageManager::extend() {
+    std::lock_guard<std::mutex> guard(file_mutex);
     std::cout << "Extending database file \n";
 
     // Create a slotted page
