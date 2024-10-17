@@ -27,7 +27,7 @@ StorageManager::~StorageManager() {
 
 std::unique_ptr<SlottedPage> StorageManager::load(PageID page_id) {
     fileStream.seekg(page_id * PAGE_SIZE, std::ios::beg);
-    auto page = std::make_unique<SlottedPage>();
+    auto page = std::make_unique<SlottedPage>(page_id);
     
     // Read the content of the file into the page
     if(fileStream.read(page->page_data.get(), PAGE_SIZE)){
@@ -53,7 +53,7 @@ void StorageManager::extend() {
     std::cout << "Extending database file \n";
 
     // Create a slotted page
-    auto empty_slotted_page = std::make_unique<SlottedPage>();
+    auto empty_slotted_page = std::make_unique<SlottedPage>(num_pages);
 
     // Move the write pointer
     fileStream.seekp(0, std::ios::end);

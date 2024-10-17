@@ -38,6 +38,10 @@ std::vector<std::unique_ptr<Field>> ScanOperator::getOutput() {
     return {}; // Return an empty vector if no tuple is available
 }
 
+std::unique_ptr<Tuple> ScanOperator::getCurrentTuple() {
+    return currentTuple->clone();
+}
+
 void ScanOperator::loadNextTuple() {
    while (currentPageIndex < bufferManager.getNumPages()) {
         auto& currentPage = bufferManager.getPage(currentPageIndex);
@@ -170,21 +174,21 @@ void HashAggregationOperator::open() {
         }
     }
 
-    for (const auto& entry : hash_table) {
-        const auto& group_keys = entry.first;
-        const auto& aggr_values = entry.second;
+    // for (const auto& entry : hash_table) {
+    //     const auto& group_keys = entry.first;
+    //     const auto& aggr_values = entry.second;
 
-        Tuple output_tuple;
-        for (const auto& key : group_keys) {
-            output_tuple.addField(std::make_unique<Field>(key));
-        }
+    //     Tuple output_tuple;
+    //     for (const auto& key : group_keys) {
+    //         output_tuple.addField(std::make_unique<Field>(key));
+    //     }
 
-        for (const auto& value : aggr_values) {
-            output_tuple.addField(std::make_unique<Field>(value));
-        }
+    //     for (const auto& value : aggr_values) {
+    //         output_tuple.addField(std::make_unique<Field>(value));
+    //     }
 
-        output_tuples.push_back(std::move(output_tuple));
-    }
+    //     output_tuples.push_back(std::move(output_tuple));
+    // }
 }
 
 bool HashAggregationOperator::next() {

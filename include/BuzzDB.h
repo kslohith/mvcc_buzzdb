@@ -7,6 +7,7 @@
 #include "HashIndex.h"
 #include "BufferManager.h"
 #include "Operator.h"
+#include "Transaction.h"
 
 class BuzzDB {
 public:
@@ -18,7 +19,7 @@ public:
 
     BuzzDB();
 
-    void insert(int key, int value);
+    void insert(int key, int value, std::unique_ptr<Transaction>& t);
     void printTuples();
     void deleteTuples(int index);
     void executeQueries();

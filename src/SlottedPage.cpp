@@ -1,12 +1,13 @@
 #include "SlottedPage.h"
 
-SlottedPage::SlottedPage() : page_data(std::make_unique<char[]>(PAGE_SIZE)), metadata_size(sizeof(Slot) * MAX_SLOTS) {
+SlottedPage::SlottedPage(int64_t PageID) : page_data(std::make_unique<char[]>(PAGE_SIZE)), metadata_size(sizeof(Slot) * MAX_SLOTS) {
     Slot* slot_array = reinterpret_cast<Slot*>(page_data.get());
     for (size_t slot_itr = 0; slot_itr < MAX_SLOTS; slot_itr++) {
         slot_array[slot_itr].empty = true;
         slot_array[slot_itr].offset = INVALID_VALUE;
         slot_array[slot_itr].length = INVALID_VALUE;
     }
+    current_page_id = PageID;
 }
 
 bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple) {
@@ -52,7 +53,16 @@ bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple) {
         slot_array[slot_itr].length = tuple_size;
     }
 
-    std::memcpy(page_data.get() + offset, serializedTuple.c_str(), tuple_size);
+    /// get the current timestamp in ms
+    int64_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    tuple->creation_ts = currentTime;
+    if(tuple->prev_page_number == -1) {
+        tuple->is_latest_version = true;
+    }
+    tuple->page_number = current_page_id;
+    tuple->slot_number = slot_itr;
+    auto serializedTupleFinal = tuple->serialize();
+    std::memcpy(page_data.get() + offset, serializedTupleFinal.c_str(), tuple_size);
     return true;
 }
 

@@ -22,8 +22,9 @@ class SlottedPage {
 public:
     std::unique_ptr<char[]> page_data;
     size_t metadata_size;
+    int64_t current_page_id;
 
-    SlottedPage();
+    SlottedPage(int64_t page_id);
 
     bool addTuple(std::unique_ptr<Tuple> tuple);
     void deleteTuple(size_t index);

@@ -51,6 +51,7 @@ public:
     bool next() override;
     void close() override;
     std::vector<std::unique_ptr<Field>> getOutput() override;
+    std::unique_ptr<Tuple> getCurrentTuple();
 
 private:
     void loadNextTuple();
