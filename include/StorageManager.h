@@ -17,8 +17,9 @@ class StorageManager {
 public:
     std::fstream fileStream;
     size_t num_pages = 0;
+    VersionManager& version_manager;
 
-    StorageManager();
+    StorageManager(VersionManager& version_manager);
     ~StorageManager();
 
     std::unique_ptr<SlottedPage> load(PageID page_id);

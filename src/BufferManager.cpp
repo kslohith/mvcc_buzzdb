@@ -1,7 +1,6 @@
 #include "BufferManager.h"
 
-BufferManager::BufferManager()
-    : policy(std::make_unique<LruPolicy>(MAX_PAGES_IN_MEMORY)) {}
+BufferManager::BufferManager(VersionManager& version_manager) : policy(std::make_unique<LruPolicy>(MAX_PAGES_IN_MEMORY)), storage_manager(version_manager) {}
 
 std::unique_ptr<SlottedPage>& BufferManager::getPage(int page_id) {
     auto it = pageMap.find(page_id);

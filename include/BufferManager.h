@@ -19,7 +19,7 @@ private:
     std::unique_ptr<Policy> policy;
 
 public:
-    BufferManager();
+    BufferManager(VersionManager& version_manager);
 
     std::unique_ptr<SlottedPage>& getPage(int page_id);
     void flushPage(int page_id);

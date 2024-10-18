@@ -1,16 +1,17 @@
 #include "SlottedPage.h"
 
-SlottedPage::SlottedPage(int64_t PageID) : page_data(std::make_unique<char[]>(PAGE_SIZE)), metadata_size(sizeof(Slot) * MAX_SLOTS) {
+SlottedPage::SlottedPage(int64_t PageID, VersionManager& versionManager) : current_page_id(PageID), version_manager(versionManager), page_data(std::make_unique<char[]>(PAGE_SIZE)), metadata_size(sizeof(Slot) * MAX_SLOTS) {
     Slot* slot_array = reinterpret_cast<Slot*>(page_data.get());
     for (size_t slot_itr = 0; slot_itr < MAX_SLOTS; slot_itr++) {
         slot_array[slot_itr].empty = true;
         slot_array[slot_itr].offset = INVALID_VALUE;
         slot_array[slot_itr].length = INVALID_VALUE;
     }
-    current_page_id = PageID;
 }
 
 bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple) {
+
+    std::cout<<"Adding tuple to page: "<< current_page_id <<std::endl;
     auto serializedTuple = tuple->serialize();
     size_t tuple_size = serializedTuple.size();
 
@@ -63,6 +64,7 @@ bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple) {
     tuple->slot_number = slot_itr;
     auto serializedTupleFinal = tuple->serialize();
     std::memcpy(page_data.get() + offset, serializedTupleFinal.c_str(), tuple_size);
+    version_manager.addOrUpdateTuple(tuple->fields[0].get()->asInt(), {current_page_id, (int64_t)slot_itr});
     return true;
 }
 

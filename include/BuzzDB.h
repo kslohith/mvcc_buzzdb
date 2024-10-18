@@ -13,6 +13,7 @@ class BuzzDB {
 public:
     HashIndex hash_index;
     BufferManager buffer_manager;
+    VersionManager version_manager;
 
     size_t max_number_of_tuples = 5000;
     size_t tuple_insertion_attempt_counter = 0;
@@ -22,6 +23,7 @@ public:
     void insert(int key, int value, std::unique_ptr<Transaction>& t);
     void printTuples();
     void deleteTuples(int index);
+    void updateTuples(int key, int value, std::unique_ptr<Transaction>& t);
     void executeQueries();
 };
 

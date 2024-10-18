@@ -1,6 +1,6 @@
 #include "StorageManager.h"
 
-StorageManager::StorageManager() {
+StorageManager::StorageManager(VersionManager& versionManager) : version_manager(versionManager) {
     fileStream.open(DATABASE_FILENAME, std::ios::in | std::ios::out);
     if (!fileStream) {
         // If file does not exist, create it
@@ -27,7 +27,7 @@ StorageManager::~StorageManager() {
 
 std::unique_ptr<SlottedPage> StorageManager::load(PageID page_id) {
     fileStream.seekg(page_id * PAGE_SIZE, std::ios::beg);
-    auto page = std::make_unique<SlottedPage>(page_id);
+    auto page = std::make_unique<SlottedPage>(page_id, version_manager);
     
     // Read the content of the file into the page
     if(fileStream.read(page->page_data.get(), PAGE_SIZE)){
@@ -53,13 +53,14 @@ void StorageManager::extend() {
     std::cout << "Extending database file \n";
 
     // Create a slotted page
-    auto empty_slotted_page = std::make_unique<SlottedPage>(num_pages);
+    auto empty_slotted_page = std::make_unique<SlottedPage>(num_pages, version_manager);
 
     // Move the write pointer
     fileStream.seekp(0, std::ios::end);
 
     // Write the page to the file, extending it
     fileStream.write(empty_slotted_page->page_data.get(), PAGE_SIZE);
+
     fileStream.flush();
 
     // Update number of pages

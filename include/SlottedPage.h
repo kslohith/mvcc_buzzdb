@@ -7,6 +7,7 @@
 #include <cstring>
 #include "Tuple.h"
 #include "Policy.h"
+#include "VersionManager.h"
 
 static constexpr size_t PAGE_SIZE = 4096;  // Fixed page size
 static constexpr size_t MAX_SLOTS = 512;   // Fixed number of slots
@@ -23,8 +24,9 @@ public:
     std::unique_ptr<char[]> page_data;
     size_t metadata_size;
     int64_t current_page_id;
+    VersionManager& version_manager;
 
-    SlottedPage(int64_t page_id);
+    SlottedPage(int64_t page_id, VersionManager& version_manager);
 
     bool addTuple(std::unique_ptr<Tuple> tuple);
     void deleteTuple(size_t index);
