@@ -56,6 +56,7 @@ bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple) {
 
     /// get the current timestamp in ms
     int64_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    std::cout<<"Current time: Tuple being inserted !"<<currentTime<<std::endl;
     tuple->creation_ts = currentTime;
     if(tuple->prev_page_number == -1) {
         tuple->is_latest_version = true;

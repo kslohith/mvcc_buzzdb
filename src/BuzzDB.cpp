@@ -8,7 +8,7 @@ BuzzDB::BuzzDB(): buffer_manager(version_manager) {
 void BuzzDB::insert(int key, int value, std::unique_ptr<Transaction> &t) {
 
     // Create a new tuple with the given key and value
-    auto newTuple = std::make_unique<Tuple>(t->transaction_id, t->commit_ts);
+    auto newTuple = std::make_unique<Tuple>(t->transaction_id, t->transaction_id);
     auto key_field = std::make_unique<Field>(key);
     auto value_field = std::make_unique<Field>(value);
     newTuple->addField(std::move(key_field));
@@ -32,6 +32,7 @@ void BuzzDB::printTuples() {
         const char* tuple_data = page_buffer + slot_array[slotNumber].offset;
         std::istringstream iss(std::string(tuple_data, slot_array[slotNumber].length));
         std::unique_ptr<Tuple> currentTuple = Tuple::deserialize(iss);
+        std::cout << currentTuple->creation_ts << " " << currentTuple->expiration_ts << " " << currentTuple->tuple_id << "\n";
         currentTuple->print();
     }
 }
@@ -67,7 +68,7 @@ void BuzzDB::updateTuples(int key, int value, std::unique_ptr<Transaction> &t) {
    
     if(t->transaction_id >= currentTuple->creation_ts && t->transaction_id <= currentTuple->expiration_ts && t->transaction_id > currentTuple->tuple_id) {
         /// write is feasible, create a new version of the tuple
-        auto newTuple = std::make_unique<Tuple>(t->transaction_id, t->commit_ts);
+        auto newTuple = std::make_unique<Tuple>(t->transaction_id, t->transaction_id);
         currentTuple->expiration_ts = t->transaction_id;
         /// To Do: Flush the current tuple to disk
         newTuple->prev_page_number = currentTuple->page_number;

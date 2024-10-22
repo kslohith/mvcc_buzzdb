@@ -2,7 +2,7 @@
 
 /// Initialize the expiration_ts to INFINITY and prev version details to -1 during the creation of the tuple
 Tuple::Tuple(int64_t tuple_id, int64_t creation_ts) : tuple_id(tuple_id), creation_ts(creation_ts) {
-    expiration_ts = INFINITY;
+    expiration_ts = 9223372036854775807;
     prev_page_number = -1;
     prev_slot_number = -1;
     page_number = -1;
