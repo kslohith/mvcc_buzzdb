@@ -9,7 +9,7 @@ SlottedPage::SlottedPage(int64_t PageID, VersionManager& versionManager) : curre
     }
 }
 
-bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple) {
+bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple, std::unique_ptr<Transaction>& t) {
 
     std::cout<<"Adding tuple to page: "<< current_page_id <<std::endl;
     auto serializedTuple = tuple->serialize();
@@ -58,14 +58,13 @@ bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple) {
     int64_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     std::cout<<"Current time: Tuple being inserted !"<<currentTime<<std::endl;
     tuple->creation_ts = currentTime;
-    if(tuple->prev_page_number == -1) {
-        tuple->is_latest_version = true;
-    }
     tuple->page_number = current_page_id;
     tuple->slot_number = slot_itr;
     auto serializedTupleFinal = tuple->serialize();
     std::memcpy(page_data.get() + offset, serializedTupleFinal.c_str(), tuple_size);
     version_manager.addOrUpdateTuple(tuple->fields[0].get()->asInt(), {current_page_id, (int64_t)slot_itr});
+    /// add the updated tuple reference to the transactions. ( will be used to commit the transactions and make the tuples visible)
+    t->pending_writes.push_back({current_page_id, (int64_t)slot_itr});
     return true;
 }
 
@@ -81,9 +80,9 @@ void SlottedPage::deleteTuple(size_t index) {
     }
 }
 
-void SlottedPage::updateTuple(size_t index, std::unique_ptr<Tuple> tuple) {
+void SlottedPage::updateTuple(size_t index, std::unique_ptr<Tuple> tuple, std::unique_ptr<Transaction>& t) {
     deleteTuple(index);
-    addTuple(std::move(tuple));
+    addTuple(std::move(tuple), t);
 }
 
 void SlottedPage::print() const {

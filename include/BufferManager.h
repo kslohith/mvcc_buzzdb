@@ -9,7 +9,8 @@
 #include "Policy.h"  // Assuming Policy and LruPolicy are defined here
 
 constexpr size_t MAX_PAGES_IN_MEMORY = 10;
-
+class SlottedPage;
+class StorageManager;
 class BufferManager {
 private:
     using PageMap = std::unordered_map<PageID, std::unique_ptr<SlottedPage>>;

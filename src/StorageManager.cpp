@@ -1,4 +1,6 @@
 #include "StorageManager.h"
+#include "SlottedPage.h"
+#include "VersionManager.h"
 
 StorageManager::StorageManager(VersionManager& versionManager) : version_manager(versionManager) {
     fileStream.open(DATABASE_FILENAME, std::ios::in | std::ios::out);

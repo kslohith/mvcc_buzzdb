@@ -8,6 +8,7 @@ Tuple::Tuple(int64_t tuple_id, int64_t creation_ts) : tuple_id(tuple_id), creati
     page_number = -1;
     slot_number = -1;
     is_latest_version = false;
+    is_visible = false;
 }
 
 void Tuple::addField(std::unique_ptr<Field> field) {
@@ -17,7 +18,7 @@ void Tuple::addField(std::unique_ptr<Field> field) {
 size_t Tuple::getSize() const {
     size_t size = 0;
     size += sizeof(int64_t) * 7; // creation_ts, expiration_ts, tuple_id, prev page id, prev slot id, page number, slot number
-    size += sizeof(bool); // is_latest_version
+    size += sizeof(bool) * 2; // is_latest_version & is_visible
     for (const auto& field : fields) {
         size += field->data_length;
     }
@@ -28,7 +29,7 @@ std::string Tuple::serialize() {
     std::stringstream buffer;
     buffer << creation_ts << ' ' << expiration_ts << ' ' << tuple_id << ' ';
     buffer << prev_page_number << ' ' << prev_slot_number << ' ' << page_number << ' ' << slot_number << ' ';
-    buffer << is_latest_version << ' ';
+    buffer << is_latest_version << ' '<< is_visible << ' ';
     buffer << fields.size() << ' ';
     for (const auto& field : fields) {
         buffer << field->serialize();
@@ -44,8 +45,8 @@ void Tuple::serialize(std::ofstream& out) {
 std::unique_ptr<Tuple> Tuple::deserialize(std::istream& in) {
     size_t fieldCount;
     int64_t creation_ts, expiration_ts, tuple_id, prev_page_number, prev_slot_number, page_number, slot_number;
-    bool is_latest_version;
-    in >> creation_ts >> expiration_ts >> tuple_id >> prev_page_number >> prev_slot_number >> page_number >> slot_number >> is_latest_version;
+    bool is_latest_version, is_visible;
+    in >> creation_ts >> expiration_ts >> tuple_id >> prev_page_number >> prev_slot_number >> page_number >> slot_number >> is_latest_version >> is_visible;
     in >> fieldCount;
     auto tuple = std::make_unique<Tuple>(tuple_id, creation_ts);
     tuple->expiration_ts = expiration_ts;
@@ -54,6 +55,7 @@ std::unique_ptr<Tuple> Tuple::deserialize(std::istream& in) {
     tuple->is_latest_version = is_latest_version;
     tuple->page_number = page_number;
     tuple->slot_number = slot_number;
+    tuple->is_visible = is_visible;
     for (size_t i = 0; i < fieldCount; ++i) {
         tuple->addField(Field::deserialize(in));
     }
@@ -68,6 +70,7 @@ std::unique_ptr<Tuple> Tuple::clone() const {
     clonedTuple->prev_page_number = prev_page_number;
     clonedTuple->prev_slot_number = prev_slot_number;
     clonedTuple->is_latest_version = is_latest_version;
+    clonedTuple->is_visible = is_visible;
     for (const auto& field : fields) {
         clonedTuple->addField(field->clone());
     }

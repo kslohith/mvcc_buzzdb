@@ -8,6 +8,7 @@
 #include "Tuple.h"
 #include "Policy.h"
 #include "VersionManager.h"
+#include "Transaction.h"
 
 static constexpr size_t PAGE_SIZE = 4096;  // Fixed page size
 static constexpr size_t MAX_SLOTS = 512;   // Fixed number of slots
@@ -28,9 +29,9 @@ public:
 
     SlottedPage(int64_t page_id, VersionManager& version_manager);
 
-    bool addTuple(std::unique_ptr<Tuple> tuple);
+    bool addTuple(std::unique_ptr<Tuple> tuple, std::unique_ptr<Transaction>& t);
     void deleteTuple(size_t index);
-    void updateTuple(size_t index, std::unique_ptr<Tuple> tuple);
+    void updateTuple(size_t index, std::unique_ptr<Tuple> tuple, std::unique_ptr<Transaction>& t);
     void print() const;
 };
 

@@ -5,14 +5,14 @@
 #include <memory>
 #include <iostream>
 #include <limits>
-#include "SlottedPage.h"
+
+class VersionManager;
+class SlottedPage;
 
 const std::string DATABASE_FILENAME = "buzzdb.dat";
 using PageID = uint16_t;
 //static constexpr size_t PAGE_SIZE = 4096;
 
-class SlottedPage;
-class TupleManager;
 class StorageManager {
 public:
     std::fstream fileStream;

@@ -2,6 +2,7 @@
 
 //To Do: Flushing VersionManager to disk
 void VersionManager::addOrUpdateTuple(int key, std::vector<int64_t> tupleMetadata) {
+    std::cout << "Adding tuple metadata to VersionManager: " << key << " " << tupleMetadata[0] << " " << tupleMetadata[1] << std::endl;
     latestVersions[key] = tupleMetadata;
 }
 

@@ -1,12 +1,12 @@
 #include "BuzzDB.h"
 #include "QueryExecutor.h"
+#include <thread>
 
 BuzzDB::BuzzDB(): buffer_manager(version_manager) {
     // Storage Manager automatically created
 }
 
 void BuzzDB::insert(int key, int value, std::unique_ptr<Transaction> &t) {
-
     // Create a new tuple with the given key and value
     auto newTuple = std::make_unique<Tuple>(t->transaction_id, t->transaction_id);
     auto key_field = std::make_unique<Field>(key);
@@ -16,7 +16,7 @@ void BuzzDB::insert(int key, int value, std::unique_ptr<Transaction> &t) {
 
     InsertOperator insertOp(buffer_manager);
     insertOp.setTupleToInsert(std::move(newTuple));
-    bool status = insertOp.next();
+    bool status = insertOp.addTuple(t);
     std::cout << "Is tuples inserted: " << status << "\n";
 }
 
@@ -33,6 +33,7 @@ void BuzzDB::printTuples() {
         std::istringstream iss(std::string(tuple_data, slot_array[slotNumber].length));
         std::unique_ptr<Tuple> currentTuple = Tuple::deserialize(iss);
         std::cout << currentTuple->creation_ts << " " << currentTuple->expiration_ts << " " << currentTuple->tuple_id << "\n";
+        std::cout << currentTuple->is_visible << "\n";
         currentTuple->print();
     }
 }
@@ -47,6 +48,7 @@ void BuzzDB::deleteTuples(int index) {
 
 void BuzzDB::updateTuples(int key, int value, std::unique_ptr<Transaction> &t) {
     /* Check the version manager for the latest version of the tuple and return it's metadata */
+    // print the thread_id
     if(version_manager.getLatestVersion(key).empty()) {
         std::cerr << "Tuple not found" << "\n";
         return;
@@ -54,38 +56,47 @@ void BuzzDB::updateTuples(int key, int value, std::unique_ptr<Transaction> &t) {
     auto tupleMetadata = version_manager.getLatestVersion(key);
     auto pageNumber = tupleMetadata[0];
     auto slotNumber = tupleMetadata[1];
-    /* Use the scan operator to get the tuple */
-    ScanOperator scanOp(buffer_manager);
-    scanOp.open();
-    auto& currentPage = buffer_manager.getPage(pageNumber);
-    char* page_buffer = currentPage->page_data.get();
-    Slot* slot_array = reinterpret_cast<Slot*>(page_buffer);
-    const char* tuple_data = page_buffer + slot_array[slotNumber].offset;
-    std::istringstream iss(std::string(tuple_data, slot_array[slotNumber].length));
-    std::unique_ptr<Tuple> currentTuple = Tuple::deserialize(iss);
 
-    std::cout<< "Current Tuple: " << currentTuple->creation_ts << " " << currentTuple->expiration_ts << " " << currentTuple->tuple_id << " " << t->transaction_id << "\n";
-   
-    if(t->transaction_id >= currentTuple->creation_ts && t->transaction_id <= currentTuple->expiration_ts && t->transaction_id > currentTuple->tuple_id) {
-        /// write is feasible, create a new version of the tuple
-        auto newTuple = std::make_unique<Tuple>(t->transaction_id, t->transaction_id);
-        currentTuple->expiration_ts = t->transaction_id;
-        /// To Do: Flush the current tuple to disk
-        newTuple->prev_page_number = currentTuple->page_number;
-        newTuple->prev_slot_number = currentTuple->slot_number;
-        std::cout << "Inserting new Tuple in the Database" << "\n";
-        auto key_field = std::make_unique<Field>(key);
-        auto value_field = std::make_unique<Field>(value);
-        newTuple->addField(std::move(key_field));
-        newTuple->addField(std::move(value_field));
+    while(pageNumber != -1 && slotNumber != -1) {
+        auto& currentPage = buffer_manager.getPage(pageNumber);
+        char* page_buffer = currentPage->page_data.get();
+        Slot* slot_array = reinterpret_cast<Slot*>(page_buffer);
+        const char* tuple_data = page_buffer + slot_array[slotNumber].offset;
+        std::istringstream iss(std::string(tuple_data, slot_array[slotNumber].length));
+        std::unique_ptr<Tuple> currentTuple = Tuple::deserialize(iss);
 
-        InsertOperator insertOp(buffer_manager);
-        insertOp.setTupleToInsert(std::move(newTuple));
-        bool status = insertOp.next();
-        std::cout << "Is new version of tuples inserted: " << status << "\n";
-    }
-    else {
-        std::cerr << "Transaction not feasible! Aborting !" << "\n";
+        std::cout<< "Current Tuple: " << currentTuple->creation_ts << " " << currentTuple->expiration_ts << " " << currentTuple->tuple_id << " " << t->transaction_id << "\n";
+    
+        /// check if currentTuple is visible to the transaction
+        if(currentTuple->is_visible || currentTuple->tuple_id == t->transaction_id) {
+            if(t->transaction_id >= currentTuple->creation_ts && t->transaction_id <= currentTuple->expiration_ts && t->transaction_id > currentTuple->tuple_id) {
+                /// write is feasible, create a new version of the tuple
+                auto newTuple = std::make_unique<Tuple>(t->transaction_id, t->transaction_id);
+                currentTuple->expiration_ts = t->transaction_id;
+                /// To Do: Flush the current tuple to disk
+                newTuple->prev_page_number = currentTuple->page_number;
+                newTuple->prev_slot_number = currentTuple->slot_number;
+                auto key_field = std::make_unique<Field>(key);
+                auto value_field = std::make_unique<Field>(value);
+                newTuple->addField(std::move(key_field));
+                newTuple->addField(std::move(value_field));
+
+                InsertOperator insertOp(buffer_manager);
+                insertOp.setTupleToInsert(std::move(newTuple));
+                bool status = insertOp.addTuple(t);
+                std::cout << "Is new version of tuples inserted: " << status << "\n";
+                break;
+            }
+            else {
+                std::cerr << "Transaction not feasible! Aborting !" << "\n";
+                break;
+            }
+        }
+        else{
+            /// get the prev version of the tuple
+            pageNumber = currentTuple->prev_page_number; 
+            slotNumber = currentTuple->prev_slot_number;
+        }
     }
 }
 

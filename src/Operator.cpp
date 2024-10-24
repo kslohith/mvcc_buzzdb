@@ -280,12 +280,17 @@ void InsertOperator::open() {
 }
 
 bool InsertOperator::next() {
+    // Not used in this context
+    return false;
+}
+
+bool InsertOperator::addTuple(std::unique_ptr<Transaction>& t) {
     if (!tupleToInsert) return false; // No tuple to insert
 
     for (size_t pageId = 0; pageId < bufferManager.getNumPages(); ++pageId) {
         auto& page = bufferManager.getPage(pageId);
         // Attempt to insert the tuple
-        if (page->addTuple(tupleToInsert->clone())) { 
+        if (page->addTuple(tupleToInsert->clone(), t)) { 
             // Flush the page to disk after insertion
             bufferManager.flushPage(pageId); 
             return true; // Insertion successful
@@ -295,7 +300,7 @@ bool InsertOperator::next() {
     // If insertion failed in all existing pages, extend the database and try again
     bufferManager.extend();
     auto& newPage = bufferManager.getPage(bufferManager.getNumPages() - 1);
-    if (newPage->addTuple(tupleToInsert->clone())) {
+    if (newPage->addTuple(tupleToInsert->clone(), t)) {
         bufferManager.flushPage(bufferManager.getNumPages() - 1);
         return true; // Insertion successful after extending the database
     }

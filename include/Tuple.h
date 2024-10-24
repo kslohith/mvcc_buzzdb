@@ -28,6 +28,8 @@ public:
     int64_t page_number;
     /// Current slot number of the tuple
     int64_t slot_number;
+    /// is the current tuple visible to other transactions!
+    bool is_visible;
     
   
     Tuple(int64_t tuple_id, int64_t creation_ts);

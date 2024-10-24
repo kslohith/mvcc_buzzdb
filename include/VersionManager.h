@@ -1,3 +1,6 @@
+#ifndef VERSIONMANAGER_H
+#define VERSIONMANAGER_H
+
 #include <unordered_map>
 #include <memory>
 #include "Tuple.h"
@@ -13,3 +16,5 @@ public:
 private:
     std::unordered_map<int64_t, std::vector<int64_t>> latestVersions;
 };
+
+#endif // VERSIONMANAGER_H

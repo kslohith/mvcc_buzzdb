@@ -8,6 +8,7 @@
 #include "Field.h"
 #include "Tuple.h"
 #include "Predicate.h" // Assuming predicates are defined here
+#include "Transaction.h"
 
 class Operator {
 public:
@@ -113,6 +114,7 @@ public:
     void open() override;
     bool next() override;
     void close() override;
+    bool addTuple(std::unique_ptr<Transaction>& Transaction);
     std::vector<std::unique_ptr<Field>> getOutput() override;
 };
 
