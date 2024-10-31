@@ -23,8 +23,6 @@ int main() {
         db.insert(7, 104, t1);
         t1->commit();
 
-        /// give 2 seconds sleep time
-        std::this_thread::sleep_for(std::chrono::seconds(2));
 
         /// Create 2 threads and let them update the same tuple, resultant state should the sum of both operations.
         std::vector<std::thread> threads;
@@ -35,15 +33,12 @@ int main() {
                 db.updateTuples(7, i+1, t2);
                 std::this_thread::sleep_for(std::chrono::seconds(2));
                 int result = t2->commit();
-                if(result == -1) {
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                while(result == -1) {
                     std::cout << "Transaction failed: Conflict" << t2->transaction_id << std::endl;
                     int64_t time_new = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
                     auto t2_new = std::make_unique<Transaction>(time_new, db.buffer_manager, db.version_manager, db.transaction_manager);
                     db.updateTuples(7, i+1, t2_new);
-                    if(t2_new->commit() == 1) {
-                        std::cout << "Transaction commited: " << t2_new->transaction_id << std::endl;
-                    }
+                    result = t2_new->commit();
                 }
             }));
         }
@@ -53,21 +48,42 @@ int main() {
         }
 
         db.printTuples();
+
+        /// Sleep for 2 seconds
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+
+
+        /// Test 2: Dirty Reads
+        /// create 2 threads, let one thread update the value of a tuple and let the other tuple just read the value and print it.
+        std::vector<std::thread> thread_test2;
+        for(int i = 0; i < 2; i++) {
+            thread_test2.push_back(std::thread([&db, i](){
+                if(i == 1){
+                    int64_t currentTime_new = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                    auto t2 = std::make_unique<Transaction>(currentTime_new, db.buffer_manager, db.version_manager, db.transaction_manager);
+                    db.updateTuples(7, i+1, t2);
+                    std::this_thread::sleep_for(std::chrono::seconds(2));
+                    int result = t2->commit();
+                    while(result == -1) {
+                        std::cout << "Transaction failed: Conflict" << t2->transaction_id << std::endl;
+                        int64_t time_new = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                        auto t2_new = std::make_unique<Transaction>(time_new, db.buffer_manager, db.version_manager, db.transaction_manager);
+                        db.updateTuples(7, i+1, t2_new);
+                        result = t2_new->commit();
+                    }
+                }
+                else{
+                    db.printTuples();
+                }
+            }));
+        }
+
+        for(auto& thread : thread_test2) {
+            thread.join();
+        }
+
+        db.printTuples();
     }
-
-    // Example operations
-    // get the current timestamp
-    // int64_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    // auto t1 = std::make_unique<Transaction>(currentTime, db.buffer_manager);
-    // db.insert(6, 93, t1);
-    // db.insert(7, 104, t1);
-
-    // t1->commit();
-
-    // int64_t currentTime_new = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    // auto t2 = std::make_unique<Transaction>(currentTime_new);
-    // db.insert(8, 106, t2);
-    // db.updateTuples(7, 100, t2);
 
 
     // Calculate and print the elapsed time
