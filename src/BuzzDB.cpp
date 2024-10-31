@@ -46,29 +46,53 @@ void BuzzDB::deleteTuples(int index) {
     }
 }
 
-void BuzzDB::updateTuples(int key, int value, std::unique_ptr<Transaction> &t) {
-    /* Check the version manager for the latest version of the tuple and return it's metadata */
-    // print the thread_id
-    if(version_manager.getLatestVersion(key).empty()) {
-        std::cerr << "Tuple not found" << "\n";
-        return;
+void BuzzDB::updateTuples(int key, int deltaValue, std::unique_ptr<Transaction> &t) {
+    /// Check if this tuple has already been updated by the transaction
+    if(t->pending_writes.size() > 0) {
+        for(auto& tupleMetadata : t->pending_writes) {
+            if(tupleMetadata[2] == key) {
+                std::cout << "Tuple already updated by the transaction !" << "\n";
+                auto pageNumber = tupleMetadata[0];
+                auto slotNumber = tupleMetadata[1];
+                auto oldValue = tupleMetadata[3];
+                auto newValue = oldValue + deltaValue;
+                auto& currentPage = buffer_manager.getPage(pageNumber);
+                char* page_buffer = currentPage->page_data.get();
+                Slot* slot_array = reinterpret_cast<Slot*>(page_buffer);
+                const char* tuple_data = page_buffer + slot_array[slotNumber].offset;
+                std::istringstream iss(std::string(tuple_data, slot_array[slotNumber].length));
+                std::unique_ptr<Tuple> currentTuple = Tuple::deserialize(iss);
+                currentTuple->fields[1] = std::make_unique<Field>(static_cast<int>(newValue));
+                //flush the tuple to disk
+                auto serializedTupleFinal = currentTuple->serialize();
+                std::memcpy(page_buffer + slot_array[slotNumber].offset, serializedTupleFinal.c_str(), currentTuple->getSize());
+                buffer_manager.flushPage(pageNumber);
+                tupleMetadata[3] = newValue;
+                break;
+            }
+        }
     }
-    auto tupleMetadata = version_manager.getLatestVersion(key);
-    auto pageNumber = tupleMetadata[0];
-    auto slotNumber = tupleMetadata[1];
+    else{
+        /* Check the version manager for the latest version of the tuple and return it's metadata */
+        if(version_manager.getLatestVersion(key).empty()) {
+            std::cerr << "Tuple not found" << "\n";
+            return;
+        }
+        auto tupleMetadata = version_manager.getLatestVersion(key);
+        auto pageNumber = tupleMetadata[0];
+        auto slotNumber = tupleMetadata[1];
 
-    while(pageNumber != -1 && slotNumber != -1) {
-        auto& currentPage = buffer_manager.getPage(pageNumber);
-        char* page_buffer = currentPage->page_data.get();
-        Slot* slot_array = reinterpret_cast<Slot*>(page_buffer);
-        const char* tuple_data = page_buffer + slot_array[slotNumber].offset;
-        std::istringstream iss(std::string(tuple_data, slot_array[slotNumber].length));
-        std::unique_ptr<Tuple> currentTuple = Tuple::deserialize(iss);
+        while(pageNumber != -1 && slotNumber != -1) {
+            auto& currentPage = buffer_manager.getPage(pageNumber);
+            char* page_buffer = currentPage->page_data.get();
+            Slot* slot_array = reinterpret_cast<Slot*>(page_buffer);
+            const char* tuple_data = page_buffer + slot_array[slotNumber].offset;
+            std::istringstream iss(std::string(tuple_data, slot_array[slotNumber].length));
+            std::unique_ptr<Tuple> currentTuple = Tuple::deserialize(iss);
 
-        std::cout<< "Current Tuple: " << currentTuple->creation_ts << " " << currentTuple->expiration_ts << " " << currentTuple->tuple_id << " " << t->transaction_id << "\n";
-    
-        /// check if currentTuple is visible to the transaction
-        if(currentTuple->is_visible || currentTuple->tuple_id == t->transaction_id) {
+            std::cout << "Transaction ID: is starting the update process !" << t->transaction_id << "\n";
+        
+            /// check if currentTuple is visible to the transaction
             if(t->transaction_id >= currentTuple->creation_ts && t->transaction_id <= currentTuple->expiration_ts && t->transaction_id > currentTuple->tuple_id) {
                 /// write is feasible, create a new version of the tuple
                 auto newTuple = std::make_unique<Tuple>(t->transaction_id, t->transaction_id);
@@ -76,8 +100,9 @@ void BuzzDB::updateTuples(int key, int value, std::unique_ptr<Transaction> &t) {
                 /// To Do: Flush the current tuple to disk
                 newTuple->prev_page_number = currentTuple->page_number;
                 newTuple->prev_slot_number = currentTuple->slot_number;
+                auto currentValue = currentTuple->fields[1].get()->asInt();
                 auto key_field = std::make_unique<Field>(key);
-                auto value_field = std::make_unique<Field>(value);
+                auto value_field = std::make_unique<Field>(currentValue + deltaValue);
                 newTuple->addField(std::move(key_field));
                 newTuple->addField(std::move(value_field));
 
@@ -87,15 +112,11 @@ void BuzzDB::updateTuples(int key, int value, std::unique_ptr<Transaction> &t) {
                 std::cout << "Is new version of tuples inserted: " << status << "\n";
                 break;
             }
-            else {
-                std::cerr << "Transaction not feasible! Aborting !" << "\n";
-                break;
+            else{
+                /// get the prev version of the tuple
+                pageNumber = currentTuple->prev_page_number; 
+                slotNumber = currentTuple->prev_slot_number;
             }
-        }
-        else{
-            /// get the prev version of the tuple
-            pageNumber = currentTuple->prev_page_number; 
-            slotNumber = currentTuple->prev_slot_number;
         }
     }
 }

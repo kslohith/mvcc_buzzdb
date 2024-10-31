@@ -5,6 +5,7 @@
 #include <memory>
 #include <sstream>
 #include <cstring>
+#include <mutex>
 #include "Tuple.h"
 #include "Policy.h"
 #include "VersionManager.h"
@@ -26,6 +27,7 @@ public:
     size_t metadata_size;
     int64_t current_page_id;
     VersionManager& version_manager;
+    std::mutex page_mutex;
 
     SlottedPage(int64_t page_id, VersionManager& version_manager);
 

@@ -8,12 +8,14 @@
 #include "BufferManager.h"
 #include "Operator.h"
 #include "Transaction.h"
+#include "TransactionManager.h"
 
 class BuzzDB {
 public:
     HashIndex hash_index;
     BufferManager buffer_manager;
     VersionManager version_manager;
+    TransactionManager transaction_manager;
 
     size_t max_number_of_tuples = 5000;
     size_t tuple_insertion_attempt_counter = 0;

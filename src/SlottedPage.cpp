@@ -10,7 +10,7 @@ SlottedPage::SlottedPage(int64_t PageID, VersionManager& versionManager) : curre
 }
 
 bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple, std::unique_ptr<Transaction>& t) {
-
+    std::lock_guard<std::mutex> lock(page_mutex);
     std::cout<<"Adding tuple to page: "<< current_page_id <<std::endl;
     auto serializedTuple = tuple->serialize();
     size_t tuple_size = serializedTuple.size();
@@ -55,20 +55,17 @@ bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple, std::unique_ptr<Transac
     }
 
     /// get the current timestamp in ms
-    int64_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    std::cout<<"Current time: Tuple being inserted !"<<currentTime<<std::endl;
-    tuple->creation_ts = currentTime;
     tuple->page_number = current_page_id;
     tuple->slot_number = slot_itr;
     auto serializedTupleFinal = tuple->serialize();
     std::memcpy(page_data.get() + offset, serializedTupleFinal.c_str(), tuple_size);
-    version_manager.addOrUpdateTuple(tuple->fields[0].get()->asInt(), {current_page_id, (int64_t)slot_itr});
     /// add the updated tuple reference to the transactions. ( will be used to commit the transactions and make the tuples visible)
-    t->pending_writes.push_back({current_page_id, (int64_t)slot_itr});
+    t->pending_writes.push_back({current_page_id, (int64_t)slot_itr, tuple->fields[0].get()->asInt(), tuple->fields[1].get()->asInt()});
     return true;
 }
 
 void SlottedPage::deleteTuple(size_t index) {
+    std::lock_guard<std::mutex> lock(page_mutex);
     Slot* slot_array = reinterpret_cast<Slot*>(page_data.get());
     
     if (index < MAX_SLOTS && !slot_array[index].empty) {
@@ -81,6 +78,7 @@ void SlottedPage::deleteTuple(size_t index) {
 }
 
 void SlottedPage::updateTuple(size_t index, std::unique_ptr<Tuple> tuple, std::unique_ptr<Transaction>& t) {
+    std::lock_guard<std::mutex> lock(page_mutex);
     deleteTuple(index);
     addTuple(std::move(tuple), t);
 }
