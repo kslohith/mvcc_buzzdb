@@ -15,6 +15,7 @@ Transaction::Transaction(int64_t transaction_id, BufferManager& buffer_manager, 
 int Transaction::commit() {
     std::lock_guard<std::mutex> lock(commit_mutex);
     std::cout << "Committing transaction: " << transaction_id << std::endl;
+    /// First check if any update made in this transaction conflicts with concurrent transactions
     for(auto& tupleMetadata : pending_writes) {
         /// ToDo: Check for conflicts and abort if needed.
         auto tupleId = tupleMetadata[2];
@@ -31,10 +32,14 @@ int Transaction::commit() {
                 }
             }
         }
+    }
+    /// Now we are sure that there are no conflicts, so update the verison manager and make necessary tuple changes and flish to disk
+    for(auto& tupleMetadata : pending_writes) {
+        /// ToDo: Check for conflicts and abort if needed.
         /// ToDo: get a write lock on the page
         auto pageNumber = tupleMetadata[0];
         auto slotNumber = tupleMetadata[1];
-        version_manager.addOrUpdateTuple(tupleId, {pageNumber, (int64_t)slotNumber});
+        auto tupleId = tupleMetadata[2];
         /// ToDo: update the tuple metadata
         auto& currentPage = buffer_manager.getPage(pageNumber);
         char* page_buffer = currentPage->page_data.get();
@@ -48,6 +53,8 @@ int Transaction::commit() {
         auto serializedTupleFinal = currentTuple->serialize();
         std::memcpy(page_buffer + slot_array[slotNumber].offset, serializedTupleFinal.c_str(), currentTuple->getSize());
         buffer_manager.flushPage(pageNumber);
+        /// Add the current version of tuple to the version manager
+        version_manager.addOrUpdateTuple(tupleId, {pageNumber, (int64_t)slotNumber});
         std::cout << "Transaction commited: " << transaction_id << " for tuple: " << tupleId << std::endl;
         /// ToDo: release the lock on the page
     }
