@@ -2,7 +2,7 @@
 
 **BuzzDB** is a lightweight database built to support Multi-Version Concurrency Control (MVCC), allowing for efficient handling of concurrent transactions and ensuring data consistency through versioned tuple management.
 
-Optimistic concurrency control is implemented. We optimistically assume there wont be any conflicts when transaction update tuples and only commit time we check for conflicts. If we detect any conflicts, we abort the transaction and restart it.
+Optimistic concurrency control is implemented by assuming that conflicts will not occur during transaction updates. Conflicts are only checked at commit time; if any are detected, the transaction is aborted and restarted.
 
 ToDo: MV2PL protocol for concurrency control
 
