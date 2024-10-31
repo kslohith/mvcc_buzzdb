@@ -39,4 +39,5 @@ The **Transaction Manager**:
     ```bash
     make
 3. Run the Code
-    ```./buzzdb
+    ```bash
+    ./buzzdb
