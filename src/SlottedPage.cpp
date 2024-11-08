@@ -54,14 +54,28 @@ bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple, std::unique_ptr<Transac
         slot_array[slot_itr].length = tuple_size;
     }
 
-    /// get the current timestamp in ms
-    tuple->page_number = current_page_id;
-    tuple->slot_number = slot_itr;
-    auto serializedTupleFinal = tuple->serialize();
-    std::memcpy(page_data.get() + offset, serializedTupleFinal.c_str(), tuple_size);
-    /// add the updated tuple reference to the transactions. ( will be used to commit the transactions and make the tuples visible)
-    t->pending_writes.push_back({current_page_id, (int64_t)slot_itr, tuple->fields[0].get()->asInt(), tuple->fields[1].get()->asInt()});
-    return true;
+    if(t->cc_mode == ConcurrencyControl::MV2PL){
+        /// acquire lock on this slot in the page
+        t->getLockOnTuple(current_page_id, slot_itr);
+        /// get the current timestamp in ms
+        tuple->page_number = current_page_id;
+        tuple->slot_number = slot_itr;
+        auto serializedTupleFinal = tuple->serialize();
+        std::memcpy(page_data.get() + offset, serializedTupleFinal.c_str(), tuple_size);
+        /// add the updated tuple reference to the transactions. ( will be used to commit the transactions and make the tuples visible)
+        t->pending_writes.push_back({current_page_id, (int64_t)slot_itr, tuple->fields[0].get()->asInt(), tuple->fields[1].get()->asInt()});
+        return true;
+    }
+    else if(t->cc_mode == ConcurrencyControl::MVOCC){
+        /// get the current timestamp in ms
+        tuple->page_number = current_page_id;
+        tuple->slot_number = slot_itr;
+        auto serializedTupleFinal = tuple->serialize();
+        std::memcpy(page_data.get() + offset, serializedTupleFinal.c_str(), tuple_size);
+        /// add the updated tuple reference to the transactions. ( will be used to commit the transactions and make the tuples visible)
+        t->pending_writes.push_back({current_page_id, (int64_t)slot_itr, tuple->fields[0].get()->asInt(), tuple->fields[1].get()->asInt()});
+        return true;
+    }
 }
 
 void SlottedPage::deleteTuple(size_t index) {

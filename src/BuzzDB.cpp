@@ -2,7 +2,7 @@
 #include "QueryExecutor.h"
 #include <thread>
 
-BuzzDB::BuzzDB(): buffer_manager(version_manager) {
+BuzzDB::BuzzDB(ConcurrencyControl cc_mode): buffer_manager(version_manager), cc_mode(cc_mode) {
     // Storage Manager automatically created
 }
 
@@ -82,6 +82,11 @@ void BuzzDB::updateTuples(int key, int deltaValue, std::unique_ptr<Transaction> 
         auto pageNumber = tupleMetadata[0];
         auto slotNumber = tupleMetadata[1];
 
+        if(t->cc_mode == ConcurrencyControl::MV2PL){
+            /// acquire read lock on the tuple
+            t->getLockOnTuple(pageNumber, slotNumber);
+        }
+
         while(pageNumber != -1 && slotNumber != -1) {
             auto& currentPage = buffer_manager.getPage(pageNumber);
             char* page_buffer = currentPage->page_data.get();
@@ -106,6 +111,11 @@ void BuzzDB::updateTuples(int key, int deltaValue, std::unique_ptr<Transaction> 
                 newTuple->addField(std::move(key_field));
                 newTuple->addField(std::move(value_field));
 
+                if(t->cc_mode == ConcurrencyControl::MV2PL){
+                    /// add the current tuple to the pending writes of the transaction
+                    t->pending_writes.push_back({pageNumber, slotNumber, key, currentValue});
+                }
+
                 InsertOperator insertOp(buffer_manager);
                 insertOp.setTupleToInsert(std::move(newTuple));
                 bool status = insertOp.addTuple(t);
@@ -113,6 +123,10 @@ void BuzzDB::updateTuples(int key, int deltaValue, std::unique_ptr<Transaction> 
                 break;
             }
             else{
+                /// release lock on the current tuple being read
+                if(t->cc_mode == ConcurrencyControl::MV2PL){
+                    t->releaseLockOnTuple(pageNumber, slotNumber);
+                }
                 /// get the prev version of the tuple
                 pageNumber = currentTuple->prev_page_number; 
                 slotNumber = currentTuple->prev_slot_number;

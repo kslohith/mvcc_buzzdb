@@ -4,10 +4,12 @@
 #include <cstdint>
 #include <vector>
 #include <mutex>
+#include "ConcurrencyControl.h"
 
 class BufferManager;
 class TransactionManager;
 class VersionManager;
+class LockManager;
 class Transaction {
 public:
     int64_t transaction_id;
@@ -17,10 +19,16 @@ public:
     BufferManager& buffer_manager;
     VersionManager& version_manager;
     TransactionManager& transaction_manager;
+    LockManager& lock_manager;
     static std::mutex commit_mutex;
+    ConcurrencyControl cc_mode;
 
-    Transaction(int64_t transaction_id, BufferManager& buffer_manager, VersionManager& version_manager, TransactionManager& transaction_manager);
+    Transaction(int64_t transaction_id, BufferManager& buffer_manager, VersionManager& version_manager, TransactionManager& transaction_manager, LockManager& lock_manager, ConcurrencyControl cc_mode);
     int commit();
+    int commitMVOCC();
+    int commitMV2PL();
+    void getLockOnTuple(int page_number, int slot_id);
+    void releaseLockOnTuple(int page_number, int slot_id);
 };
 
 #endif // TRANSACTION_H
