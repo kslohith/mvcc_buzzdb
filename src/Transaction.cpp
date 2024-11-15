@@ -84,9 +84,6 @@ int Transaction::commitMV2PL() {
         auto pageNumber = tupleMetadata[0];
         auto slotNumber = tupleMetadata[1];
         auto tupleId = tupleMetadata[2];
-        /// Release the lock on the tuple
-        auto lock = lock_manager.getLock(pageNumber, slotNumber);
-        lock->release();
         /// ToDo: update the tuple metadata
         auto& currentPage = buffer_manager.getPage(pageNumber);
         char* page_buffer = currentPage->page_data.get();
@@ -96,24 +93,32 @@ int Transaction::commitMV2PL() {
         std::unique_ptr<Tuple> currentTuple = Tuple::deserialize(iss);
         int64_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         currentTuple->creation_ts = currentTime;
+        std::cout<<"Current Tuple: while commiting "<<currentTuple->fields[0]->asInt()<<" "<<currentTuple->fields[1]->asInt()<<std::endl;
         /// flush the tuple to disk
         auto serializedTupleFinal = currentTuple->serialize();
         std::memcpy(page_buffer + slot_array[slotNumber].offset, serializedTupleFinal.c_str(), currentTuple->getSize());
         buffer_manager.flushPage(pageNumber);
         /// Add the current version of tuple to the version manager
         version_manager.addOrUpdateTuple(tupleId, {pageNumber, (int64_t)slotNumber});
+        /// Release the lock on the tuple
+        auto lock = lock_manager.getLock(pageNumber, slotNumber);
+        lock->release();
         std::cout << "Transaction commited: " << transaction_id << " for tuple: " << tupleId << std::endl;
         /// ToDo: release the lock on the page
     }
-    /// Write the transaction to the transaction manager
-    auto commit_ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    transaction_manager.addCommittedTransaction(commit_ts, pending_writes);
+    /// release locks for all pending reads
+    for(auto& tupleMetadata : pending_reads) {
+        auto pageNumber = tupleMetadata[0];
+        auto slotNumber = tupleMetadata[1];
+        auto lock = lock_manager.getLock(pageNumber, slotNumber);
+        lock->release();
+    }
     return 1;
 }
 
 void Transaction::getLockOnTuple(int page_number, int slot_id) {
     auto lock = lock_manager.getLock(page_number, slot_id);
-    lock->acquire();
+    lock->acquire();        
 }
 
 void Transaction::releaseLockOnTuple(int page_number, int slot_id) {

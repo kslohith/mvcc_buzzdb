@@ -16,6 +16,7 @@ public:
     int64_t commit_ts;
     /// @brief Store the metadata / address for the tuples that are being updated by the transaction
     std::vector<std::vector<int64_t>> pending_writes;
+    std::vector<std::vector<int64_t>> pending_reads;
     BufferManager& buffer_manager;
     VersionManager& version_manager;
     TransactionManager& transaction_manager;

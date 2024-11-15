@@ -10,6 +10,7 @@
 #include "Transaction.h"
 #include "TransactionManager.h"
 #include "ConcurrencyControl.h"
+#include "LockManager.h"
 
 class BuzzDB {
 public:
@@ -18,6 +19,7 @@ public:
     VersionManager version_manager;
     TransactionManager transaction_manager;
     ConcurrencyControl cc_mode;
+    LockManager lock_manager;
 
     size_t max_number_of_tuples = 5000;
     size_t tuple_insertion_attempt_counter = 0;
