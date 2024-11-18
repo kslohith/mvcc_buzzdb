@@ -11,7 +11,6 @@ SlottedPage::SlottedPage(int64_t PageID, VersionManager& versionManager) : curre
 
 bool SlottedPage::addTuple(std::unique_ptr<Tuple> tuple, std::unique_ptr<Transaction>& t) {
     std::lock_guard<std::mutex> lock(page_mutex);
-    std::cout<<"Adding tuple to page: "<< current_page_id <<std::endl;
     auto serializedTuple = tuple->serialize();
     size_t tuple_size = serializedTuple.size();
 
